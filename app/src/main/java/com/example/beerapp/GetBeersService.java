@@ -5,6 +5,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
+import com.example.beerapp.database.AppDatabase;
+import com.example.beerapp.database.BeerEntity;
 import com.example.beerapp.networking.Beer;
 import com.example.beerapp.networking.BeerApiOkHttp;
 import com.example.beerapp.networking.BeerApiRetrofitController;
@@ -45,6 +47,16 @@ public class GetBeersService extends IntentService {
                     try {
                         List<Beer> list = BeerApiOkHttp.retriveBeersSync();
                         Log.d("service", "list size = " + list.size());
+
+
+                        for (int i=0; i< list.size(); i++) {
+                            Beer beer = list.get(i);
+                            BeerEntity entity = new BeerEntity(String.valueOf(beer.getId()), beer.getName(), beer.getDesc(), beer.getImageUrl());
+
+                            Log.d("service", "insert data into table, " + entity.name);
+                            AppDatabase.getDatabase(this).beerDao().insert(entity);
+                        }
+
 
                         EventBus.getDefault().post(new BeersDownloadedEvent(list));
                     } catch (IOException e) {

@@ -1,6 +1,10 @@
 package com.example.beerapp;
 
+import android.arch.lifecycle.Observer;
+import android.arch.lifecycle.ViewModelProvider;
+import android.arch.lifecycle.ViewModelProviders;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.widget.LinearLayoutManager;
@@ -16,6 +20,10 @@ import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import com.example.beerapp.database.AppDatabase;
+import com.example.beerapp.database.BeerEntity;
+import com.example.beerapp.database.BeerViewModel;
+import com.example.beerapp.database.BeerViewModelFactory;
 import com.example.beerapp.networking.Beer;
 
 import org.greenrobot.eventbus.EventBus;
@@ -75,11 +83,50 @@ public class MainActivity extends AppCompatActivity
         prefFile.addStringToSharedPref("beer", "Ciucas");
 
 
-        //GetBeersService.startService(this, GetBeersService.SYNC_ACTION);
+        GetBeersService.startService(this, GetBeersService.SYNC_ACTION);
 
         //GetBeersService.startService(this, GetBeersService.ASYNC_ACTION);
 
-        GetBeersService.startService(this, GetBeersService.RETROFIT_GET_ACTION);
+       //GetBeersService.startService(this, GetBeersService.RETROFIT_GET_ACTION);
+
+
+        // get the viewModel using custom Factory
+        BeerViewModel viewModel = ViewModelProviders.of(this, new BeerViewModelFactory(getApplication())).get(BeerViewModel.class);
+
+        // add observe to liveData manually updated by developer with postValues
+        viewModel.getBeerList().observe(this, new Observer<List<Beer>>() {
+            @Override
+            public void onChanged(@Nullable List<Beer> beers) {
+                Log.d("mainActivity", "onChanged - list of beers");
+
+                if (beers != null) {
+                    adapter.updateData(beers);
+                }
+            }
+        });
+
+        // when room update entries to BeerEntity table
+        viewModel.getLiveBeerList().observe(this, new Observer<List<BeerEntity>>() {
+            @Override
+            public void onChanged(@Nullable List<BeerEntity> beerEntities) {
+                Log.d("mainActivity", "### onChanged - list of beers ###");
+
+                beers.clear();
+                if (beerEntities != null) {
+                    for(int i=0;i<beerEntities.size();i++) {
+                        BeerEntity entity = beerEntities.get(i);
+                        Beer beer = new Beer(Integer.parseInt(entity.id), entity.name, entity.desc, entity.imageUrl);
+                        beers.add(beer);
+                    }
+
+                    adapter.updateData(beers);
+                }
+            }
+        });
+
+
+        BeerEntity entity = AppDatabase.getDatabase(this).beerDao().getBeerById(1);
+        AppDatabase.getDatabase(this).beerDao().delete(entity);
 
     }
 
